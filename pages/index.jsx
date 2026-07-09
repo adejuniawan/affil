@@ -630,8 +630,9 @@ export default function AffiliateLandingPage({
               </p>
               <h1>Choose better platforms before you spend your money.</h1>
               <p className="hero-text">
-                We review useful tools in simple English, explain who each one
-                is for, and point out what to check before you subscribe.
+                We help you find useful online tools, understand what they do, 
+                and decide which ones are worth trying before you spend money.
+
               </p>
 
               <div className="hero-actions">
