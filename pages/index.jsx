@@ -1,48 +1,8 @@
-// app/page.jsx
+import Head from "next/head";
+
+// pages/index.jsx
 // One-file affiliate website for Next.js + Vercel.
 // Replace the links, product names, prices, and domain below before publishing.
-
-export const metadata = {
-  metadataBase: new URL("https://yourdomain.com"),
-  title: "Smart Picks Hub | Honest Finds for Better Everyday Buying",
-  description:
-    "Simple, honest product picks for people who want useful gear, fair value, and less buying stress.",
-  keywords: [
-    "best product picks",
-    "honest product reviews",
-    "affiliate product recommendations",
-    "smart buying guide",
-    "useful everyday products",
-  ],
-  alternates: {
-    canonical: "/",
-  },
-  openGraph: {
-    title: "Smart Picks Hub | Honest Finds for Better Everyday Buying",
-    description:
-      "Clear, simple product recommendations made to help you buy with confidence.",
-    url: "https://yourdomain.com",
-    siteName: "Smart Picks Hub",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Smart Picks Hub | Honest Finds for Better Everyday Buying",
-    description:
-      "Simple product picks with clear reasons, quick comparisons, and honest notes.",
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-snippet": -1,
-      "max-image-preview": "large",
-      "max-video-preview": -1,
-    },
-  },
-};
 
 const site = {
   name: "Smart Picks Hub",
@@ -252,7 +212,38 @@ function ProductCard({ product, index }) {
 
 export default function AffiliateLandingPage() {
   return (
-    <main>
+    <>
+      <Head>
+        <title>Smart Picks Hub | Honest Finds for Better Everyday Buying</title>
+        <meta
+          name="description"
+          content="Simple, honest product picks for people who want useful gear, fair value, and less buying stress."
+        />
+        <meta
+          name="keywords"
+          content="best product picks, honest product reviews, affiliate product recommendations, smart buying guide, useful everyday products"
+        />
+        <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+        <link rel="canonical" href="https://yourdomain.com" />
+
+        <meta property="og:title" content="Smart Picks Hub | Honest Finds for Better Everyday Buying" />
+        <meta
+          property="og:description"
+          content="Clear, simple product recommendations made to help you buy with confidence."
+        />
+        <meta property="og:url" content="https://yourdomain.com" />
+        <meta property="og:site_name" content="Smart Picks Hub" />
+        <meta property="og:type" content="website" />
+
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Smart Picks Hub | Honest Finds for Better Everyday Buying" />
+        <meta
+          name="twitter:description"
+          content="Simple product picks with clear reasons, quick comparisons, and honest notes."
+        />
+      </Head>
+
+      <main>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -1221,6 +1212,7 @@ export default function AffiliateLandingPage() {
           }
         }
       `}</style>
-    </main>
+      </main>
+    </>
   );
 }
