@@ -7,11 +7,13 @@ import { useMemo, useState } from "react";
 // Vercel env variable needed: GOOGLE_SHEET_CSV_URL
 
 const site = {
-  name: "ToolStack Picks",
-  tagline: "Simple tool picks for smarter online business decisions.",
-  domain: "https://yourdomain.com",
-  email: "hello@yourdomain.com",
-  logoLetter: "T",
+  name: process.env.NEXT_PUBLIC_SITE_NAME || "ToolStack Picks",
+  tagline:
+    process.env.NEXT_PUBLIC_SITE_TAGLINE ||
+    "Simple tool picks for smarter online business decisions.",
+  domain: process.env.NEXT_PUBLIC_SITE_URL || "https://yourdomain.com",
+  email: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "hello@yourdomain.com",
+  logoLetter: (process.env.NEXT_PUBLIC_SITE_NAME || "ToolStack Picks").charAt(0),
 };
 
 const fallbackProducts = [
@@ -30,6 +32,7 @@ const fallbackProducts = [
     watchOut:
       "Do not copy ads directly. Use it for research, then create your own offer and creative angle.",
     affiliateUrl: "https://example.com/minea-affiliate-link",
+    websiteUrl: "https://www.minea.com/",
     imageUrl: "",
     isFeatured: true,
     sortOrder: 1,
@@ -51,6 +54,7 @@ const fallbackProducts = [
     watchOut:
       "Ad data is only a signal. You still need testing, good landing pages, and clear offers.",
     affiliateUrl: "https://example.com/ad-research-affiliate-link",
+    websiteUrl: "",
     imageUrl: "",
     isFeatured: false,
     sortOrder: 2,
@@ -72,6 +76,7 @@ const fallbackProducts = [
     watchOut:
       "Monthly cost can grow when you add many apps. Start lean and only add what you really need.",
     affiliateUrl: "https://example.com/store-builder-affiliate-link",
+    websiteUrl: "https://www.shopify.com/",
     imageUrl: "",
     isFeatured: false,
     sortOrder: 3,
@@ -93,6 +98,7 @@ const fallbackProducts = [
     watchOut:
       "Templates help, but weak copy and unclear offers will still hurt conversion.",
     affiliateUrl: "https://example.com/landing-page-affiliate-link",
+    websiteUrl: "",
     imageUrl: "",
     isFeatured: false,
     sortOrder: 4,
@@ -114,6 +120,7 @@ const fallbackProducts = [
     watchOut:
       "List quality matters more than list size. Avoid spammy sending and weak offers.",
     affiliateUrl: "https://example.com/email-tool-affiliate-link",
+    websiteUrl: "",
     imageUrl: "",
     isFeatured: false,
     sortOrder: 5,
@@ -135,6 +142,7 @@ const fallbackProducts = [
     watchOut:
       "Templates can look generic. Add your own proof, offer, and brand style.",
     affiliateUrl: "https://example.com/design-tool-affiliate-link",
+    websiteUrl: "",
     imageUrl: "",
     isFeatured: false,
     sortOrder: 6,
@@ -173,6 +181,9 @@ function normalizeHeader(value) {
 function normalizeProduct(row, index) {
   const get = (key) => row[normalizeHeader(key)] || "";
   const status = String(get("status") || "active").toLowerCase();
+  const websiteUrl = normalizeUrl(get("websiteUrl"));
+  const affiliateUrl = normalizeUrl(get("affiliateUrl")) || websiteUrl || "#";
+  const useWebsiteMetaValue = String(get("useWebsiteMeta") || "").toLowerCase();
 
   return {
     name: get("name") || `Tool ${index + 1}`,
@@ -196,7 +207,8 @@ function normalizeProduct(row, index) {
     watchOut:
       get("watchOut") ||
       "Check the latest pricing, plan limits, refund policy, and whether the tool fits your workflow before buying.",
-    affiliateUrl: get("affiliateUrl") || "#",
+    affiliateUrl,
+    websiteUrl,
     imageUrl: get("imageUrl") || "",
     isFeatured: ["true", "yes", "1", "featured"].includes(
       String(get("isFeatured")).toLowerCase()
@@ -204,6 +216,7 @@ function normalizeProduct(row, index) {
     sortOrder: Number(get("sortOrder")) || index + 1,
     status,
     seoKeyword: get("seoKeyword") || "best online business tools",
+    useWebsiteMeta: !["false", "no", "0", "off"].includes(useWebsiteMetaValue),
   };
 }
 
@@ -261,6 +274,162 @@ function parseCsv(text) {
         product.status !== "inactive"
     )
     .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+
+function normalizeUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw || raw === "#") return "";
+
+  try {
+    return new URL(raw).toString();
+  } catch (_) {
+    try {
+      return new URL(`https://${raw}`).toString();
+    } catch (_) {
+      return "";
+    }
+  }
+}
+
+function decodeHtml(value) {
+  return String(value || "")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function stripTags(value) {
+  return decodeHtml(String(value || "").replace(/<[^>]*>/g, " "));
+}
+
+function pickMetaContent(html, names) {
+  for (const name of names) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regexes = [
+      new RegExp(`<meta[^>]+(?:property|name)=["']${escaped}["'][^>]+content=["']([^"']*)["'][^>]*>`, "i"),
+      new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]+(?:property|name)=["']${escaped}["'][^>]*>`, "i"),
+    ];
+
+    for (const regex of regexes) {
+      const match = html.match(regex);
+      if (match?.[1]) return decodeHtml(match[1]);
+    }
+  }
+
+  return "";
+}
+
+function pickTitle(html) {
+  const ogTitle = pickMetaContent(html, ["og:title", "twitter:title"]);
+  if (ogTitle) return ogTitle;
+
+  const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  return match?.[1] ? stripTags(match[1]) : "";
+}
+
+function resolveAssetUrl(assetUrl, pageUrl) {
+  if (!assetUrl) return "";
+
+  try {
+    return new URL(assetUrl, pageUrl).toString();
+  } catch (_) {
+    return "";
+  }
+}
+
+function trimText(value, maxLength = 220) {
+  const clean = decodeHtml(value);
+  if (clean.length <= maxLength) return clean;
+  return `${clean.slice(0, maxLength - 1).trim()}…`;
+}
+
+async function fetchWebsiteMeta(product) {
+  if (!product.websiteUrl) return {};
+
+  const timeoutMs = Math.max(1200, Number(process.env.WEBSITE_META_TIMEOUT_MS || 3500));
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(product.websiteUrl, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": process.env.WEBSITE_META_USER_AGENT || "ToolStackPicksBot/1.0 (+https://yourdomain.com)",
+        Accept: "text/html,application/xhtml+xml",
+      },
+    });
+
+    if (!response.ok) return {};
+
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("text/html")) return {};
+
+    const html = await response.text();
+    const description = pickMetaContent(html, [
+      "description",
+      "og:description",
+      "twitter:description",
+    ]);
+    const image = pickMetaContent(html, ["og:image", "twitter:image"]);
+
+    return {
+      title: trimText(pickTitle(html), 90),
+      description: trimText(description, 240),
+      imageUrl: resolveAssetUrl(image, product.websiteUrl),
+      metaSource: product.websiteUrl,
+    };
+  } catch (_) {
+    return {};
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function enrichProductsWithWebsiteMeta(products) {
+  const shouldFetch = String(process.env.AUTO_FETCH_WEBSITE_META || "false").toLowerCase() === "true";
+  if (!shouldFetch) return products;
+
+  const limit = Math.max(1, Number(process.env.WEBSITE_META_LIMIT || 12));
+  const itemsToFetch = products
+    .map((product, index) => ({ product, index }))
+    .filter(({ product }) => product.websiteUrl && product.useWebsiteMeta)
+    .slice(0, limit);
+
+  const metaResults = await Promise.all(
+    itemsToFetch.map(async ({ product, index }) => ({
+      index,
+      meta: await fetchWebsiteMeta(product),
+    }))
+  );
+
+  const enriched = [...products];
+  for (const { index, meta } of metaResults) {
+    if (!meta || Object.keys(meta).length === 0) continue;
+    const product = enriched[index];
+
+    enriched[index] = {
+      ...product,
+      headline:
+        product.headline && product.headline !== "A useful tool for online business."
+          ? product.headline
+          : meta.title || product.headline,
+      shortDescription:
+        product.shortDescription &&
+        product.shortDescription !==
+          "A simple platform that helps you work faster, compare better, and make clearer decisions."
+          ? product.shortDescription
+          : meta.description || product.shortDescription,
+      imageUrl: product.imageUrl || meta.imageUrl || "",
+      metaSource: meta.metaSource || product.websiteUrl,
+    };
+  }
+
+  return enriched;
 }
 
 function Stars({ rating }) {
@@ -1305,6 +1474,10 @@ export default function AffiliateLandingPage({
 
 export async function getStaticProps() {
   const csvUrl = process.env.GOOGLE_SHEET_CSV_URL;
+  const refreshSeconds = Math.max(
+    60,
+    Number(process.env.SHEET_REFRESH_SECONDS || 900)
+  );
 
   if (!csvUrl) {
     return {
@@ -1312,7 +1485,7 @@ export async function getStaticProps() {
         products: fallbackProducts,
         source: "fallback",
       },
-      revalidate: 3600,
+      revalidate: refreshSeconds,
     };
   }
 
@@ -1329,13 +1502,15 @@ export async function getStaticProps() {
 
     const csvText = await response.text();
     const sheetProducts = parseCsv(csvText);
+    const productsFromSheet = sheetProducts.length > 0 ? sheetProducts : fallbackProducts;
+    const enrichedProducts = await enrichProductsWithWebsiteMeta(productsFromSheet);
 
     return {
       props: {
-        products: sheetProducts.length > 0 ? sheetProducts : fallbackProducts,
+        products: enrichedProducts,
         source: sheetProducts.length > 0 ? "google-sheet" : "fallback",
       },
-      revalidate: 3600,
+      revalidate: refreshSeconds,
     };
   } catch (error) {
     console.error(error);
@@ -1344,7 +1519,7 @@ export async function getStaticProps() {
         products: fallbackProducts,
         source: "fallback",
       },
-      revalidate: 3600,
+      revalidate: refreshSeconds,
     };
   }
 }
